@@ -44,7 +44,7 @@ private:
 	void loadParameters();
 
 public:
-	TPGROpenCV(int _useCameraIndex = 0, boost::shared_ptr<criticalSection> _cs);
+	TPGROpenCV(int _useCameraIndex, boost::shared_ptr<criticalSection> _cs);
 	~TPGROpenCV();
 	int init( FlyCapture2::PixelFormat _format = FlyCapture2::PIXEL_FORMAT_BGR, int ColorProcessingAlgorithm = FlyCapture2::ColorProcessingAlgorithm::HQ_LINEAR);
 	void PrintBuildInfo();

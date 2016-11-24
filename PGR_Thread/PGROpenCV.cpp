@@ -145,11 +145,6 @@ int TPGROpenCV::PixelFormatInOpenCV()
 int TPGROpenCV::start()
 {
 
-	quit = false;
-	running = true;
-
-	//スレッド生成
-	thread = boost::thread( &TPGROpenCV::threadFunction, this);
 
 	fc2Error = fc2Cam.StartCapture();
 	if (fc2Error != FlyCapture2::PGRERROR_OK) {
@@ -167,6 +162,12 @@ int TPGROpenCV::start()
 		else {
 			fc2Mat.create(wk.GetRows(), wk.GetCols(), PixelFormatInOpenCV());
 		}
+		quit = false;
+		running = true;
+
+		//スレッド生成
+		thread = boost::thread( &TPGROpenCV::threadFunction, this);
+
 		return 0;
 	}
 	return -1;
@@ -381,4 +382,18 @@ void TPGROpenCV::CameraCapture(cv::Mat &image)
 	// rgbImageをMat型に変換
 	image = cv::Mat(cvtImage.GetRows(), cvtImage.GetCols(), CV_8U);
 	memcpy(image.data, cvtImage.GetData(), cvtImage.GetDataSize());
+}
+
+void TPGROpenCV::threadFunction()
+{
+	while(!quit)
+	{
+		boost::shared_ptr<imgSrc> imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
+		boost::unique_lock<boost::mutex> lock(mutex);
+		queryFrame();
+		lock.unlock();
+
+		imgsrc->image = fc2Mat;
+		critical_section->setImageSource(imgsrc);
+	}
 }

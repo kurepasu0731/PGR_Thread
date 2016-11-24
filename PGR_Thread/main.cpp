@@ -5,8 +5,8 @@
 
 #include "PGROpenCV.h"
 
-#define CAMERA_WIDTH 2448
-#define CAMERA_HEIGHT 2048
+#define CAMERA_WIDTH 1920
+#define CAMERA_HEIGHT 1200
 
 #define DOT_SIZE 150
 #define A_THRESH_VAL -5
@@ -133,13 +133,13 @@ void adaptiveThresholdTest(const cv::Mat &src)
 		//適応的閾値処理の確認//
 		cv::Mat adapBinImg, binImg;
 		cv::adaptiveThreshold(src, adapBinImg, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, A_THRESH_VAL);
-		cv::threshold(src, binImg, 150, 255, cv::THRESH_BINARY);
+		//cv::threshold(src, binImg, 150, 255, cv::THRESH_BINARY);
 
 		cv::Mat resizeAdap, resizeBin;
 		cv::resize(adapBinImg, resizeAdap, cv::Size(adapBinImg.cols * 0.5, adapBinImg.rows * 0.5));
-		cv::resize(binImg, resizeBin, cv::Size(binImg.cols * 0.5, binImg.rows * 0.5));
+		//cv::resize(binImg, resizeBin, cv::Size(binImg.cols * 0.5, binImg.rows * 0.5));
 
-		cv::imshow("Threshold", resizeBin);
+		//cv::imshow("Threshold", resizeBin);
 		cv::imshow("adaptiveThreshold", resizeAdap);
 		//適応的閾値処理の確認//
 }
@@ -158,7 +158,7 @@ int main( int argc, char* argv[] )
 	cv::Mat cap;
 
 	// initialization
-	pgrOpenCV.init(FlyCapture2::PIXEL_FORMAT_MONO8, FlyCapture2::HQ_LINEAR);
+	pgrOpenCV.init(FlyCapture2::PIXEL_FORMAT_RGB8, FlyCapture2::HQ_LINEAR);
 	// start capturing
 	pgrOpenCV.start();
 	for( ;; ) {
@@ -168,11 +168,22 @@ int main( int argc, char* argv[] )
 		critical_section->getImageSource(imgsrc);
 		cv::Mat frame = imgsrc->image;
 
-		pgrOpenCV.tm.elapsed();
 
 		//適応的閾値処理と普通の二値化の比較
 		//adaptiveThresholdTest(pgrOpenCV.getVideo());
-		adaptiveThresholdTest(frame);
+		if(!frame.empty())
+		{
+			cv::Mat currFrameGray;
+			cv::cvtColor(frame, currFrameGray, CV_RGB2GRAY);
+			init_v0(currFrameGray);
+
+			//adaptiveThresholdTest(currFrameGray);
+			//ノーマル
+			//pgrOpenCV.showCapImg(frame);
+
+		}
+
+		pgrOpenCV.tm.elapsed();
 
 		//コーナー点を検出
 		//pgrOpenCV.showCapImg(detectCorner(pgrOpenCV.getVideo()));

@@ -1,8 +1,8 @@
 #include <boost/thread/thread.hpp>
 #include <opencv2\opencv.hpp>
 
-#define CAMERA_WIDTH 2448
-#define CAMERA_HEIGHT 2048
+#define CAMERA_WIDTH 1920
+#define CAMERA_HEIGHT 1200
 #define RESIZESCALE 0.5
 
 
