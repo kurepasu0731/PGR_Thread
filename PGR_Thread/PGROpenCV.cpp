@@ -391,9 +391,23 @@ void TPGROpenCV::threadFunction()
 		boost::shared_ptr<imgSrc> imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
 		boost::unique_lock<boost::mutex> lock(mutex);
 		queryFrame();
+
+		cv::Mat gray;
+		cv::cvtColor(fc2Mat, gray, CV_RGB2GRAY);
+		cv::Mat resized;
+		cv::resize(gray, resized, cv::Size(), RESIZESCALE, RESIZESCALE);
+
+		//適応的閾値処理
+		cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, A_THRESH_VAL);
+		//膨張処理
+		cv::dilate(resized, resized, cv::Mat());
+
+		cv::Mat ptsImg = cv::Mat::zeros( CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC1); //原寸大表示用
+		cv::resize(resized, ptsImg, cv::Size(), 1/RESIZESCALE, 1/RESIZESCALE);
+
 		lock.unlock();
 
-		imgsrc->image = fc2Mat;
+		imgsrc->image = ptsImg;
 		critical_section->setImageSource(imgsrc);
 	}
 }

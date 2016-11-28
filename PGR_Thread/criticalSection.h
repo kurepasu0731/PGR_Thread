@@ -3,8 +3,6 @@
 
 #define CAMERA_WIDTH 1920
 #define CAMERA_HEIGHT 1200
-#define RESIZESCALE 0.5
-
 
 struct imgSrc
 {
@@ -17,7 +15,7 @@ public:
 	criticalSection()
 	{
 		imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
-		imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
+		imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC1);
 		image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
 	}
 

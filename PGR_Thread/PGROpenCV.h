@@ -4,6 +4,9 @@
 
 #define PGR_PARAMETER_FILE "./parameter.ini"
 
+#define RESIZESCALE 0.2
+#define A_THRESH_VAL -5
+
 #pragma once
 
 #include <FlyCapture2.h>
