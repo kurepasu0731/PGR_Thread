@@ -2,14 +2,21 @@
 #include <Windows.h>
 
 // Constructor
-TPGROpenCV::TPGROpenCV(int _useCameraIndex, boost::shared_ptr<criticalSection> _cs)
+TPGROpenCV::TPGROpenCV(int _useCameraIndex)
 {
 	windowNameCamera = "camera";
 	cv::namedWindow(windowNameCamera.c_str(), cv::WINDOW_NORMAL);
 
 	useCamIndex = _useCameraIndex;
 
-	critical_section = _cs;
+	critical_section = boost::shared_ptr<criticalSection> (new criticalSection);
+	imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
+	imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
+	imgsrc->dotsCount = 0;
+	imgsrc->dots_data.clear();
+
+	dots.clear();
+
 }
 
 // Destructor
@@ -326,6 +333,12 @@ void TPGROpenCV::getWhiteBalance(int &r, int &b)
 	fc2Prop.valueB = b;
 	fc2Cam.SetProperty(&fc2Prop);
 }
+float TPGROpenCV::getFramerate()
+{
+	fc2Prop.type = FlyCapture2::FRAME_RATE;
+	fc2Prop.absControl = true;
+	return fc2Prop.absValue;
+}
 void TPGROpenCV::setGamma(float gamma)
 {
 	fc2Prop.type = FlyCapture2::GAMMA;
@@ -392,22 +405,144 @@ void TPGROpenCV::threadFunction()
 		boost::unique_lock<boost::mutex> lock(mutex);
 		queryFrame();
 
-		cv::Mat gray;
-		cv::cvtColor(fc2Mat, gray, CV_RGB2GRAY);
-		cv::Mat resized;
-		cv::resize(gray, resized, cv::Size(), RESIZESCALE, RESIZESCALE);
+		//ドット検出
+		cv::Mat drawimage;
+		getDots(fc2Mat, dots, A_THRESH_VAL, DOT_THRESH_VAL_MIN, DOT_THRESH_VAL_MAX, RESIZESCALE, drawimage);
 
-		//適応的閾値処理
-		cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, A_THRESH_VAL);
-		//膨張処理
-		cv::dilate(resized, resized, cv::Mat());
-
-		cv::Mat ptsImg = cv::Mat::zeros( CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC1); //原寸大表示用
-		cv::resize(resized, ptsImg, cv::Size(), 1/RESIZESCALE, 1/RESIZESCALE);
+		//cv::Mat gray;
+		//cv::cvtColor(fc2Mat, gray, CV_RGB2GRAY);
+		//cv::Mat resized;
+		//cv::resize(gray, resized, cv::Size(), RESIZESCALE, RESIZESCALE);
+		////適応的閾値処理
+		//cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, A_THRESH_VAL);
+		////膨張処理
+		//cv::dilate(resized, resized, cv::Mat());
+		//cv::Mat ptsImg = cv::Mat::zeros( CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC1); //原寸大表示用
+		//cv::resize(resized, ptsImg, cv::Size(), 1/RESIZESCALE, 1/RESIZESCALE);
 
 		lock.unlock();
 
-		imgsrc->image = ptsImg;
+		imgsrc->image = drawimage;
+		//imgsrc->image = fc2Mat;
+		imgsrc->dotsCount = dots.size();
+		////vectorからint配列に(x,y,x,y,…の順)
+		//data.clear();
+		imgsrc->dots_data.clear();
+		//int *dataarray = new int[dots.size() * 2];
+		for(int i = 0; i < dots.size(); i++)
+		{
+			//imgsrc->dots_data[i] = dots[i].x;
+			//imgsrc->dots_data[i + 1] = dots[i].y;
+			//data.push_back(dots[i].x);
+			//data.push_back(dots[i].y);
+			//dataarray[i] = dots[i].x;
+			//dataarray[i + 1] = dots[i].y;
+			imgsrc->dots_data.emplace_back(dots[i].x);
+			imgsrc->dots_data.emplace_back(dots[i].y);
+		
+		}
+		//memcpy(imgsrc->dots_data, &data[0], data.size()*sizeof(int));
+		//imgsrc->dots_data = &data[0];
+		//imgsrc->dots_data = dataarray;
+
 		critical_section->setImageSource(imgsrc);
+
+		//cv::imshow("dots detect", drawimage);
 	}
 }
+
+//スレッドから取ってくる
+cv::Mat TPGROpenCV::getVideo()
+{
+	critical_section->getImageSource(imgsrc);
+	return imgsrc->image;
+}
+
+//**ドット検出関連**//
+bool TPGROpenCV::getDots(cv::Mat &src, std::vector<cv::Point> &dots, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage)
+{
+	dots.clear();
+	cv::Mat gray;
+	cv::cvtColor(src, gray, CV_RGB2GRAY);
+	//リサイズ
+	cv::Mat resized;
+	cv::resize(gray, resized, cv::Size(), resizeScale, resizeScale);
+	//適応的閾値処理
+	cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, C);
+	//膨張処理
+	cv::dilate(resized, resized, cv::Mat());
+	//原寸大に戻す
+	cv::Mat ptsImg = cv::Mat::zeros( CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC1); //原寸大表示用
+	cv::resize(resized, ptsImg, cv::Size(), 1/resizeScale, 1/resizeScale);
+	cv::Mat ptsImgColor; 
+	cv::cvtColor(ptsImg, ptsImgColor, CV_GRAY2BGR);
+
+	cv::Point sum, min, max, p;
+	int cnt;
+	for (int i = 0; i < ptsImg.rows; i++) {
+		for (int j = 0; j < ptsImg.cols; j++) {
+			if (ptsImg.at<uchar>(i, j)) {
+				sum = cv::Point(0, 0); cnt = 0; min = cv::Point(j, i); max = cv::Point(j, i);
+				calCoG_dot_v0(ptsImg, sum, cnt, min, max, cv::Point(j, i));
+				if (cnt>dots_thresh_min && max.x - min.x < dots_thresh_max && max.y - min.y < dots_thresh_max) {
+					dots.push_back(cv::Point(sum.x / cnt, sum.y / cnt));
+					//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
+
+				}
+			}
+		}
+	}
+
+
+	std::vector<cv::Point>::iterator it = dots.begin();	
+	bool k = (dots.size() >= 20);
+	// 描画
+	cv::Scalar color = k ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0);
+	for (it = dots.begin(); it != dots.end(); ++it) {
+		cv::circle(ptsImgColor, *it, 3, color, 2);
+	}
+	
+	drawimage = ptsImgColor;
+
+	return k;
+}
+
+void TPGROpenCV::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p)
+{
+	if (src.at<uchar>(p)) {
+		sum += p; cnt++;
+		src.at<uchar>(p) = 0;
+		if (p.x<min.x) min.x = p.x;
+		if (p.x>max.x) max.x = p.x;
+		if (p.y<min.y) min.y = p.y;
+		if (p.y>max.y) max.y = p.y;
+
+		if (p.x - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x-1, p.y));
+		if (p.x + 1 < CAMERA_WIDTH) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x + 1, p.y));
+		if (p.y - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y - 1));
+		if (p.y + 1 < CAMERA_HEIGHT) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y + 1));
+	}
+}
+
+void TPGROpenCV::setDotsParameters( double AthreshVal, int DotThreshValMin, int DotThreshValMax, float resizeScale)
+{
+	//A_THRESH_VAL = AthreshVal;
+	//DOT_THRESH_VAL_MIN = DotThreshValMin;
+	//DOT_THRESH_VAL_MAX = DotThreshValMax;
+	//RESIZESCALE = resizeScale;
+}
+
+int TPGROpenCV::getDotsCount()
+{
+	critical_section->getImageSource(imgsrc);
+	return imgsrc->dotsCount;
+}
+
+void TPGROpenCV::getDotsData(std::vector<int> &data)
+{
+	critical_section->getImageSource(imgsrc);
+	data = imgsrc->dots_data;
+
+}
+
+

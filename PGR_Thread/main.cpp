@@ -169,14 +169,14 @@ void adaptiveThresholdTest(const cv::Mat &src)
 int main( int argc, char* argv[] )
 {
 	//! スレッド間の共有クラス
-	boost::shared_ptr<criticalSection> critical_section = boost::shared_ptr<criticalSection> (new criticalSection);
+	//boost::shared_ptr<criticalSection> critical_section = boost::shared_ptr<criticalSection> (new criticalSection);
 
 	boost::shared_ptr<imgSrc> imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
 	imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
 
 
 	// 起動したいカメラインデックスを指定
-	TPGROpenCV	pgrOpenCV(0, critical_section);
+	TPGROpenCV	pgrOpenCV(0);
 	cv::Mat cap;
 
 	// initialization
@@ -187,8 +187,8 @@ int main( int argc, char* argv[] )
 		pgrOpenCV.tm.restart();
 
 		//pgrOpenCV.queryFrame();
-		critical_section->getImageSource(imgsrc);
-		cv::Mat frame = imgsrc->image;
+		//critical_section->getImageSource(imgsrc);
+		cv::Mat frame = pgrOpenCV.getVideo();
 
 
 		//適応的閾値処理と普通の二値化の比較
@@ -197,13 +197,33 @@ int main( int argc, char* argv[] )
 		{
 			//cv::Mat currFrameGray;
 			//cv::cvtColor(frame, currFrameGray, CV_RGB2GRAY);
-			init_v0(frame);
+			//init_v0(frame);
 
 			//adaptiveThresholdTest(currFrameGray);
 			//ノーマル
-			//pgrOpenCV.showCapImg(frame);
+			pgrOpenCV.showCapImg(frame);
 
 		}
+
+		int count = pgrOpenCV.getDotsCount();
+
+		std::cout << "count:" << count << std::endl;
+
+		//int *dotsdata = new int[count*2];
+		//pgrOpenCV.getDotsData(dotsdata);
+		std::vector<int> data;
+		pgrOpenCV.getDotsData(data);
+		for(int i = 0; i < data.size(); i++)
+		{
+			std::cout << data[i] << std::endl;
+		}
+
+		//int* dotsdata = pgrOpenCV.getDotsData();
+
+		//for(int i = 0; i < count*2; i++)
+		//{
+		//	std::cout << dotsdata[i] << std::endl;
+		//}
 
 		pgrOpenCV.tm.elapsed();
 
