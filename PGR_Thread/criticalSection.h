@@ -6,7 +6,8 @@
 
 struct imgSrc
 {
-	cv::Mat image;
+	cv::Mat image;//元画像
+	cv::Mat result_image;//ドット検出に使った画像とドット検出結果
 	int dotsCount; //検出されたドットの数
 	std::vector<int> dots_data;//ドットの座標データ
 };
@@ -18,6 +19,7 @@ public:
 	{
 		imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
 		imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
+		imgsrc->result_image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
 
 		image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
 	}

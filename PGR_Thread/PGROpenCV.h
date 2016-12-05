@@ -6,9 +6,9 @@
 
 #define DOT_SIZE 150
 #define A_THRESH_VAL -5
-#define DOT_THRESH_VAL_MIN 20  // ドットノイズ弾き
+#define DOT_THRESH_VAL_MIN 100  // ドットノイズ弾き
 #define DOT_THRESH_VAL_MAX 500 // エッジノイズ弾き
-#define RESIZESCALE 0.5
+#define RESIZESCALE 1.0
 
 
 #pragma once
@@ -95,11 +95,12 @@ public:
 	float getGain();
 	void getWhiteBalance(int &r, int &b);
 	float getFramerate();
-	void showCapImg(cv::Mat cap = cv::Mat());	//撮影画像を表示
+	void showCapImg(std::string winname, cv::Mat cap = cv::Mat());	//撮影画像を表示
 	void CameraCapture(cv::Mat &image);			// 撮影画像をMatで取得
 
 	//cv::Mat getVideo(){ return fc2Mat; };
 	cv::Mat getVideo();
+	cv::Mat getResultVideo();
 
 	//**ドット検出関連**//
 	void setDotsParameters(double AthreshVal, int DotThreshValMin, int DotThreshValMax, float resizeScale);

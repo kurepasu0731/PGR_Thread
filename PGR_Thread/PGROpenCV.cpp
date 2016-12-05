@@ -12,6 +12,7 @@ TPGROpenCV::TPGROpenCV(int _useCameraIndex)
 	critical_section = boost::shared_ptr<criticalSection> (new criticalSection);
 	imgsrc = boost::shared_ptr<imgSrc>(new imgSrc);
 	imgsrc->image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);
+	imgsrc->result_image = cv::Mat::zeros(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC3);//ドット検出結果画像
 	imgsrc->dotsCount = 0;
 	imgsrc->dots_data.clear();
 
@@ -362,14 +363,14 @@ void TPGROpenCV::setFrameRate(float framerate)
 }
 
 //
-void TPGROpenCV::showCapImg(cv::Mat cap)
+void TPGROpenCV::showCapImg(std::string winname, cv::Mat cap)
 {
 	//cv::namedWindow(windowNameCamera.c_str(), cv::WINDOW_NORMAL);
 	//引き数に何も指定しなかった場合はここで撮影画像を取得
 	//if (cap.data == NULL)
 	//	cap = getVideo();
-	//cv::resize(cap, cap, cv::Size(), 0.8, 0.8);
-	cv::imshow(windowNameCamera, cap);
+	cv::resize(cap, cap, cv::Size(), 0.8, 0.8);
+	cv::imshow(winname, cap);
 	cv::waitKey(1);
 
 }
@@ -422,8 +423,8 @@ void TPGROpenCV::threadFunction()
 
 		lock.unlock();
 
-		imgsrc->image = drawimage;
-		//imgsrc->image = fc2Mat;
+		imgsrc->result_image = drawimage;
+		imgsrc->image = fc2Mat;
 		imgsrc->dotsCount = dots.size();
 		////vectorからint配列に(x,y,x,y,…の順)
 		//data.clear();
@@ -458,6 +459,14 @@ cv::Mat TPGROpenCV::getVideo()
 	return imgsrc->image;
 }
 
+//スレッドから結果画像を取ってくる
+cv::Mat TPGROpenCV::getResultVideo()
+{
+	critical_section->getImageSource(imgsrc);
+	return imgsrc->result_image;
+}
+
+
 //**ドット検出関連**//
 bool TPGROpenCV::getDots(cv::Mat &src, std::vector<cv::Point> &dots, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage)
 {
@@ -477,6 +486,10 @@ bool TPGROpenCV::getDots(cv::Mat &src, std::vector<cv::Point> &dots, double C, i
 	cv::Mat ptsImgColor; 
 	cv::cvtColor(ptsImg, ptsImgColor, CV_GRAY2BGR);
 
+	//HSV画像作成
+	cv::Mat srchsv;
+	cv::cvtColor(src, srchsv, CV_RGB2HSV);
+
 	cv::Point sum, min, max, p;
 	int cnt;
 	for (int i = 0; i < ptsImg.rows; i++) {
@@ -485,9 +498,16 @@ bool TPGROpenCV::getDots(cv::Mat &src, std::vector<cv::Point> &dots, double C, i
 				sum = cv::Point(0, 0); cnt = 0; min = cv::Point(j, i); max = cv::Point(j, i);
 				calCoG_dot_v0(ptsImg, sum, cnt, min, max, cv::Point(j, i));
 				if (cnt>dots_thresh_min && max.x - min.x < dots_thresh_max && max.y - min.y < dots_thresh_max) {
-					dots.push_back(cv::Point(sum.x / cnt, sum.y / cnt));
-					//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
 
+					//検出した点が壁の汚れである可能性があるので、色で識別する
+					int x = sum.x / cnt;
+					int y = sum.y / cnt;
+					int index = srchsv.step * y + (x * 3);
+					if(srchsv.data[index + 2] >= 150)
+					{
+						dots.push_back(cv::Point(x, y));
+						//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
+					}
 				}
 			}
 		}

@@ -189,7 +189,7 @@ int main( int argc, char* argv[] )
 		//pgrOpenCV.queryFrame();
 		//critical_section->getImageSource(imgsrc);
 		cv::Mat frame = pgrOpenCV.getVideo();
-
+		cv::Mat result = pgrOpenCV.getResultVideo();//ドット検出結果
 
 		//適応的閾値処理と普通の二値化の比較
 		//adaptiveThresholdTest(pgrOpenCV.getVideo());
@@ -201,22 +201,22 @@ int main( int argc, char* argv[] )
 
 			//adaptiveThresholdTest(currFrameGray);
 			//ノーマル
-			pgrOpenCV.showCapImg(frame);
-
+			pgrOpenCV.showCapImg("src", frame);
+			pgrOpenCV.showCapImg("result", result);
 		}
 
-		int count = pgrOpenCV.getDotsCount();
+		//int count = pgrOpenCV.getDotsCount();
 
-		std::cout << "count:" << count << std::endl;
+		//std::cout << "count:" << count << std::endl;
 
 		//int *dotsdata = new int[count*2];
 		//pgrOpenCV.getDotsData(dotsdata);
-		std::vector<int> data;
-		pgrOpenCV.getDotsData(data);
-		for(int i = 0; i < data.size(); i++)
-		{
-			std::cout << data[i] << std::endl;
-		}
+		//std::vector<int> data;
+		//pgrOpenCV.getDotsData(data);
+		//for(int i = 0; i < data.size(); i++)
+		//{
+		//	std::cout << data[i] << std::endl;
+		//}
 
 		//int* dotsdata = pgrOpenCV.getDotsData();
 
