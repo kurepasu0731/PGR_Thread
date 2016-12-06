@@ -6,7 +6,7 @@
 
 #define DOT_SIZE 150
 #define A_THRESH_VAL -5
-#define DOT_THRESH_VAL_MIN 100  // ドットノイズ弾き
+#define DOT_THRESH_VAL_MIN 50  // ドットノイズ弾き
 #define DOT_THRESH_VAL_MAX 500 // エッジノイズ弾き
 #define RESIZESCALE 1.0
 

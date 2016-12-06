@@ -503,7 +503,18 @@ bool TPGROpenCV::getDots(cv::Mat &src, std::vector<cv::Point> &dots, double C, i
 					int x = sum.x / cnt;
 					int y = sum.y / cnt;
 					int index = srchsv.step * y + (x * 3);
-					if(srchsv.data[index + 2] >= 150)
+
+					//int Vave = 0, num = 0;
+					//for(int iy = (((y-3) > 0) ? (y-3):0); iy <= (((y+3) < ptsImg.rows) ? (y+3):ptsImg.rows); iy++)
+					//	for(int ix = (((x-3) > 0) ? (x-3):0); ix <= (((x+3) < ptsImg.cols) ? (x+3):ptsImg.cols); ix++)
+					//	{
+					//		int index = srchsv.step * iy + (ix * 3);
+					//		Vave += srchsv.data[index + 2];
+					//		num++;
+					//	}
+					//	Vave /= num;
+
+					if(srchsv.data[index + 2] >= 100)
 					{
 						dots.push_back(cv::Point(x, y));
 						//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
